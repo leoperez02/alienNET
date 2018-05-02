@@ -22,10 +22,12 @@ int main(int argc, char **argv)
 	 * 4. ruta destino (debe incluir la diagonal final)
 	 * 	ejemplo: /home/user/dir1/dir2/
 	 * */
-	 
+	system("clear");	
 	if ( argc < 5)
 	{
 		perror("Hacen falta argumentos para ejecutar la transferencia\n");
+		//gotoxy(10,6);
+		//printf(" hello world \n"); 
 		exit(1);
 	}
 	char *file_name = argv[1];

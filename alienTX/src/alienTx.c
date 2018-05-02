@@ -158,10 +158,11 @@ void transfer(char *path_file, char *DIR_IP, char *PUERTO, char *ruta_destino)
 		bytes+=bytes_writed;
 		printf("Enviados %d bytes del archivo ...\n",bytes);
 		bytes_readed = fread(&buffer, sizeof(unsigned char), MAX_BUF, file);
+		gotoxy(1,6);
 	}
 	fclose(file);
 	
-	printf ("Archivo enviado ...\n");
+	printf ("\nArchivo enviado ...\n");
 	printf ("Cerrando la aplicacion cliente\n");
 /*
  *	Cierre de la conexion

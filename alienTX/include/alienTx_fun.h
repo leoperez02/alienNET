@@ -11,3 +11,4 @@ int get_data();
 int send_data(char *data);
 void transfer(char *file_name, char *DIR_IP, char *PUERTO, char *ruta_destino);
 char *get_file_name(char *file_name);
+void gotoxy(int x,int y);

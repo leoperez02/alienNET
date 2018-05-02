@@ -56,3 +56,8 @@ char *get_file_name(char *file_name)
 	return file_name;
 	//printf("\nNOMBRE DEL ARCHIVO: %s\n",file_name);
 }	
+
+void gotoxy(int x,int y)
+{
+	printf("%c[%d;%df",0x1B,y,x);
+}
