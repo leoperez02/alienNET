@@ -1,5 +1,6 @@
 #include "alienTx_fun.h"
 
+void get_menu();
 /**
  * La ejecución del programa tiene la siguiente sintaxis
  * 
@@ -26,6 +27,7 @@ int main(int argc, char **argv)
 	if ( argc < 5)
 	{
 		perror("Hacen falta argumentos para ejecutar la transferencia\n");
+		get_menu();
 		//gotoxy(10,6);
 		//printf(" hello world \n"); 
 		exit(1);
@@ -38,4 +40,17 @@ int main(int argc, char **argv)
 	transfer(file_name, DIR_IP, PUERTO, ruta_destino);
 	
 	return 0;	
+}
+
+void get_menu()
+{
+	printf(" * La ejecución del programa tiene la siguiente sintaxis\n"					);
+	printf(" *\n" 						);
+	printf(" * 1. Para transfrir el archivo FILE1 al servidor con la dirección IP y \n");
+	printf(" * escuchando en el PUERTO, en la ruta RUTA_DESTINO\n" );
+	printf(" * $ ./clienteTCP FILE1 IP PUERTO RUTA_DESTINO\n" );
+	printf(" * \n");
+	printf(" * 2. Para transferir todos los archivos de un directorio \n");
+	printf(" * (no es recursivo\n");
+	printf(" * $ ./clienteTCP RUTA_DIR IP PUERTO RUTA_DESTINO \n");
 }
