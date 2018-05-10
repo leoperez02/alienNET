@@ -3,11 +3,11 @@
 int  sockfd;
 unsigned char buffer[MAX_BUF];
 
-void transfer(char *path_file, char *DIR_IP, char *PUERTO, char *ruta_destino)
+void transfer_file(char *src_file, char *ip_address, char *dest_path)
 {	
 	struct sockaddr_in direccion_servidor;
 	
-	//printf("Ruta de dstino %s\n", ruta_destino);
+	//printf("Ruta de dstino %s\n", dest_path);
 
 /*	
  *	AF_INET - Protocolo de internet IPV4
@@ -27,11 +27,11 @@ void transfer(char *path_file, char *DIR_IP, char *PUERTO, char *ruta_destino)
 	/**
 	 * Asignacion de puerto de conexion del socket
 	 * */
-	direccion_servidor.sin_port = htons( atoi(PUERTO) );
+	direccion_servidor.sin_port = htons( PUERTO );
 /*	
  *	inet_pton - Convierte direcciones de texto IPv4 en forma binaria
  */	
-	if( inet_pton(AF_INET, DIR_IP, &direccion_servidor.sin_addr) <= 0 )
+	if( inet_pton(AF_INET, ip_address, &direccion_servidor.sin_addr) <= 0 )
 	{
 		perror("Ocurrio un error al momento de asignar la direccion IP");
 		exit(1);
@@ -77,14 +77,14 @@ void transfer(char *path_file, char *DIR_IP, char *PUERTO, char *ruta_destino)
 	 * tiene el nombre del archivo solamente o esta incluida la ruta.
 	 * 
 	 * En caso de estar incluida la ruta, se tranferira como nombre de 
-	 * archivo, los ultimos caracteres encontrado a partir del ultimo '/'
-	 * leido en la cadena
+	 * archivo, los ultimos caracteres encontrados a partir de la ultima
+	 * diagonal '/' leida en la cadena
 	*/
 	
 	/**
 	 * 1. Enviar nombre del archivo
 	 * */
-	file_name = get_file_name(path_file); 
+	file_name = get_file_name(src_file); 
 	printf("Transfiriendo nombre de archivo destino: %s\n",file_name);
 	bytes_writed = send_data(file_name);
 	
@@ -99,27 +99,36 @@ void transfer(char *path_file, char *DIR_IP, char *PUERTO, char *ruta_destino)
 		perror("Fallo la transmision del nombre de archivo\n");
 		exit(1);
 	}
-	
 	//se omite comprobacion buffer == file_name
 	
 	/**
-	 * 2. Enviar ruta de destino
+	 * 2. Enviar ruta de destino en caso de haberla
 	 * */
-	printf("Transfiriendo ruta de archivo destino: %s\n",ruta_destino);
-	bytes_writed = send_data(ruta_destino);
-
-	/**
-	 * Esperar respuesta del servidor, regresa la ruta de destino 
-	 * */
-	bytes_readed = get_data();
-	
-	if( bytes_readed != bytes_writed )
+	if ( dest_path != NULL )
 	{
-		perror("Fallo la transmision de la ruta de destino\n");
-		exit(1);
+		printf("Transfiriendo ruta de archivo destino: %s\n",dest_path);
+		bytes_writed = send_data(dest_path);
+		/**
+		* Esperar respuesta del servidor, regresa la ruta de destino 
+		* */
+		bytes_readed = get_data();
+		if( bytes_readed != bytes_writed )
+		{
+			perror("Fallo la transmision de la ruta de destino\n");
+			exit(1);
+		}
+		//se omite comprobacion buffer == dest_path
 	}
-	
-	//se omite comprobacion buffer == ruta_destino
+	else
+	{
+		bytes_writed = send_data("A");
+		bytes_readed = get_data();
+		if( bytes_readed != bytes_writed )
+		{
+			perror("Fallo en protocolo\n");
+			exit(1);
+		}
+	}
 	
 	/**
 	 * 3. Enviar bytes del archivo
@@ -128,7 +137,7 @@ void transfer(char *path_file, char *DIR_IP, char *PUERTO, char *ruta_destino)
 	/**
 	 * Abrir archivo a transferir en modo binario de lectura
 	 * */
-	file = fopen(path_file,"rb");
+	file = fopen(src_file,"rb");
 		
 	/**
 	 * Verificar que no hay error en la apertura
@@ -146,16 +155,18 @@ void transfer(char *path_file, char *DIR_IP, char *PUERTO, char *ruta_destino)
 
 	bytes=0; /** Contador de los bytes transferidos */
 	
+	// Leer MAX_BUF bytes del archivo en el buffer para transmitir
 	bytes_readed = fread(&buffer, sizeof(unsigned char), MAX_BUF, file);
 	while ( bytes_readed )
 	{
+		// Escribir en el socket los bytes leidos del buffer
 		bytes_writed = write(sockfd, &buffer, bytes_readed); 
 		if( bytes_writed < 0 )
 		{
 			perror("Ocurrio un problema en el envio del mensaje\n");
 			exit(1);
 		}
-		bytes+=bytes_writed;
+		bytes+=bytes_writed; // Cuenta total de bytes transferidos
 		printf("Enviados %d bytes del archivo ...\n",bytes);
 		bytes_readed = fread(&buffer, sizeof(unsigned char), MAX_BUF, file);
 		gotoxy(1,6);
@@ -164,8 +175,8 @@ void transfer(char *path_file, char *DIR_IP, char *PUERTO, char *ruta_destino)
 	
 	printf ("\nArchivo enviado ...\n");
 	printf ("Cerrando la aplicacion cliente\n");
-/*
- *	Cierre de la conexion
- */
+	/*
+	*	Cierre de la conexion
+	*/
 	close(sockfd);
 }
