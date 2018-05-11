@@ -34,7 +34,7 @@ int get_data(void);
 char *get_file_name(char *file_name);
 void get_menu(void);
 char *get_path_file(char *ruta_destino, char *file_name);
-void gotoxy(int x,int y);
+void gotoxy(int x, int y);
 void make_socket(char* ip_address);
 void psyduck_warning(void);
 int send_data(char *data);
