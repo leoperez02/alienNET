@@ -47,8 +47,8 @@
  * indique la ruta alternativa DEST_PATH
  * 
  * */
- 
-int main(int argc, char **argv)
+
+int main(int argc, char *argv[])
 {
 	/*
 	 * Validar argumentos recibidos al ejecutar el programa
@@ -85,9 +85,7 @@ int main(int argc, char **argv)
 		break;
 		
 		case 5:
-			printf("\n***************** ADVERTENCIA *****************\n");
-			printf("\n* Un psyduck salvaje esta a punto de aparecer *");
-			printf("\n\n***********************************************\n");
+			psyduck_warning();
 		break;
 		
 		default:

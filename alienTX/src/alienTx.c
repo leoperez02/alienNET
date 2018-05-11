@@ -1,144 +1,112 @@
+/*
+ * alienTx.c
+ * 
+ * Copyright 2018 Lain Iwakura <lain@pavilion>
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ * 
+ * 
+ */
+
 #include "alienTx_fun.h"
 
-int  sockfd;
-unsigned char buffer[MAX_BUF];
+int sockfd;
+unsigned char buffer[MTU];
 
+/*
+ * 
+ * name: transfer_file
+ * @param src_file cadena de la ruta y nombre del archivo a enviar
+ * @param ip_address cadena de la direccion IP del servidor
+ * @param dest_path ruta de destino o ruta ded destino y nombre del 
+ * nuevo archivo en el servidor. NULL en caso de usar la ruta default
+ * y el mismo nombre de archivo
+ * 
+ */
 void transfer_file(char *src_file, char *ip_address, char *dest_path)
 {	
-	struct sockaddr_in direccion_servidor;
+	FILE *file;
+	int bytes, bytes_writed, bytes_readed;
+	char *file_name, *transfer_path;
+	/**
+	 * Crear un socket y conectarse al servidor
+	 * */
+	printf("Abriendo un socket hacia el servidor %s ...\n",ip_address);
+	make_socket(ip_address);
+	printf("Socket conectado!\n");
+	/*
+	 *	Inicia la transferencia de datos entre cliente y servidor
+	*/	
 	
-	//printf("Ruta de dstino %s\n", dest_path);
-
-/*	
- *	AF_INET - Protocolo de internet IPV4
- *  htons - El ordenamiento de bytes en la red es siempre big-endian, 
- * 	por lo que en arquitecturas little-endian se deben revertir los bytes
- */	
-	/**
-	 * La zona de memoria apuntada por &direccion_servidor se llena con
-	 * ceros
-	 * */
-	memset (&direccion_servidor, 0, sizeof (direccion_servidor));
-	/**
-	 * Se establece como dominio de comunicacion del socket la familia
-	 * AF_INET 
-	 * */
-	direccion_servidor.sin_family = AF_INET;
-	/**
-	 * Asignacion de puerto de conexion del socket
-	 * */
-	direccion_servidor.sin_port = htons( PUERTO );
-/*	
- *	inet_pton - Convierte direcciones de texto IPv4 en forma binaria
- */	
-	if( inet_pton(AF_INET, ip_address, &direccion_servidor.sin_addr) <= 0 )
-	{
-		perror("Ocurrio un error al momento de asignar la direccion IP");
-		exit(1);
-	}
-/*
- *	Creacion de las estructuras necesarias para el manejo de un socket
- *  SOCK_STREAM - Protocolo orientado a conexión
- */
-	printf("Creando Socket ....\n");
-	if( (sockfd = socket (AF_INET, SOCK_STREAM, 0)) < 0 )
-	{
-		perror("Ocurrio un problema en la creacion del socket");
-		exit(1);
-	}
-/*
- *	Inicia el establecimiento de una conexion mediante una apertura
- *	activa con el servidor
- *  connect - ES BLOQUEANTE
- */
-	printf ("Estableciendo conexion ...\n");
-	if( connect(sockfd, (struct sockaddr *)&direccion_servidor, sizeof(direccion_servidor) ) < 0) 
-	{
-		perror ("Ocurrio un problema al establecer la conexion");
-		exit(1);
-	}
-/*
- *	Inicia la transferencia de datos entre cliente y servidor
- */	
 	/**
 	 * Enviar archivo
 	 * 
-	 * 1. Enviar nombre del archivo
-	 * 2. Enviar ruta donde guardar el archivo
-	 * 3. Enviar contenido del archivo
+	 * 1. Enviar ruta destino y nombre del archivo destino
+	 * 2. Enviar contenido del archivo
 	 * */
-	 
-	FILE *file;
-	int bytes, bytes_writed, bytes_readed;
-	char *file_name;
-	/**
-	 * La cadena del nombre del archivo puede incluir la ruta.
-	 * Es necesario inspeccionar la cadena leida para determinar si se
-	 * tiene el nombre del archivo solamente o esta incluida la ruta.
-	 * 
-	 * En caso de estar incluida la ruta, se tranferira como nombre de 
-	 * archivo, los ultimos caracteres encontrados a partir de la ultima
-	 * diagonal '/' leida en la cadena
-	*/
 	
 	/**
-	 * 1. Enviar nombre del archivo
+	 * 1. Enviar ruta y nombre
 	 * */
-	file_name = get_file_name(src_file); 
-	printf("Transfiriendo nombre de archivo destino: %s\n",file_name);
-	bytes_writed = send_data(file_name);
-	
+	if ( dest_path != NULL ) //Se envia la ruta destino del archivo 
+	{
+		/*
+		 * Para verificar si se trata de la ruta destino y el nombre
+		 * nuevo del archivo o solamente de la ruta, se evalua el ultimo
+		 * caracter de la cadena y se compara con la diagonal '/'
+		 * */
+		if ( dest_path[strlen( dest_path ) - 1] == '/') // Es ruta
+		{
+			// Se obtiene el nombre original del archivo sin ruta
+			file_name = get_file_name(src_file); 
+			//printf("Nombre de archivo destino: %s\n",file_name);
+			// Se concatena el nombre original a la ruta destino
+			transfer_path = get_path_file(dest_path, file_name);
+		}
+		else // Es ruta y nombre del destino
+		{
+			transfer_path = dest_path;
+		}
+	}
+	else // Se usa la ruta default ./ con el nombre del archivo original
+	{
+		// Se obtiene el nombre original del archivo sin ruta
+		file_name = get_file_name(src_file); 
+		transfer_path = get_path_file("./", file_name);
+	}
+	printf("Transferencia al destino: %s\n",transfer_path);
+	bytes_writed = send_data(transfer_path);
 	/**
-	 * Esperar respuesta del servidor, regresa el nombre de archivo 
-	 * recibido
-	 * */
+	* Esperar respuesta del servidor, regresa la ruta de destino 
+	* */
 	bytes_readed = get_data();
-	
 	if( bytes_readed != bytes_writed )
 	{
-		perror("Fallo la transmision del nombre de archivo\n");
+		perror("Fallo la transmision de la ruta de destino\n");
 		exit(1);
 	}
-	//se omite comprobacion buffer == file_name
+	//se omite comprobacion buffer == transfer_path
 	
 	/**
-	 * 2. Enviar ruta de destino en caso de haberla
+	 * 2. Enviar bytes del archivo
 	 * */
-	if ( dest_path != NULL )
-	{
-		printf("Transfiriendo ruta de archivo destino: %s\n",dest_path);
-		bytes_writed = send_data(dest_path);
-		/**
-		* Esperar respuesta del servidor, regresa la ruta de destino 
-		* */
-		bytes_readed = get_data();
-		if( bytes_readed != bytes_writed )
-		{
-			perror("Fallo la transmision de la ruta de destino\n");
-			exit(1);
-		}
-		//se omite comprobacion buffer == dest_path
-	}
-	else
-	{
-		bytes_writed = send_data("A");
-		bytes_readed = get_data();
-		if( bytes_readed != bytes_writed )
-		{
-			perror("Fallo en protocolo\n");
-			exit(1);
-		}
-	}
-	
-	/**
-	 * 3. Enviar bytes del archivo
-	 * */
- 
 	/**
 	 * Abrir archivo a transferir en modo binario de lectura
 	 * */
 	file = fopen(src_file,"rb");
-		
 	/**
 	 * Verificar que no hay error en la apertura
 	 * */
@@ -147,16 +115,15 @@ void transfer_file(char *src_file, char *ip_address, char *dest_path)
 		perror ("Ocurrio un problema al abrir el archivo\n");
 		exit(1);
 	}
-	
 	/**
 	 * Transferir bytes ...
 	 * */
 	printf("Iniciando transferencia...\n");
 
-	bytes=0; /** Contador de los bytes transferidos */
+	bytes=0; // Contador de los bytes transferidos 
 	
-	// Leer MAX_BUF bytes del archivo en el buffer para transmitir
-	bytes_readed = fread(&buffer, sizeof(unsigned char), MAX_BUF, file);
+	// Leer MTU bytes del archivo en el buffer para transmitir
+	bytes_readed = fread(&buffer, sizeof(unsigned char), MTU, file);
 	while ( bytes_readed )
 	{
 		// Escribir en el socket los bytes leidos del buffer
@@ -167,13 +134,13 @@ void transfer_file(char *src_file, char *ip_address, char *dest_path)
 			exit(1);
 		}
 		bytes+=bytes_writed; // Cuenta total de bytes transferidos
-		printf("Enviados %d bytes del archivo ...\n",bytes);
-		bytes_readed = fread(&buffer, sizeof(unsigned char), MAX_BUF, file);
-		gotoxy(1,6);
+		printf("Enviados %d bytes del archivo\n",bytes);
+		bytes_readed = fread(&buffer, sizeof(unsigned char), MTU, file);
+		gotoxy(1,7);
 	}
 	fclose(file);
 	
-	printf ("\nArchivo enviado ...\n");
+	printf ("\nArchivo enviado!\n");
 	printf ("Cerrando la aplicacion cliente\n");
 	/*
 	*	Cierre de la conexion
