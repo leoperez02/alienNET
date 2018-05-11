@@ -136,7 +136,7 @@ void transfer_file(char *src_file, char *ip_address, char *dest_path)
 		bytes+=bytes_writed; // Cuenta total de bytes transferidos
 		printf("Enviados %d bytes del archivo\n",bytes);
 		bytes_readed = fread(&buffer, sizeof(unsigned char), MTU, file);
-		gotoxy(1,7);
+		gotoxy(1,5);
 	}
 	fclose(file);
 	
