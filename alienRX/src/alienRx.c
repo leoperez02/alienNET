@@ -1,13 +1,37 @@
+/*
+ * alienRx.c
+ * 
+ * Copyright 2018 Leo <leo@Inspiron3437>
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ * 
+ * 
+ */
+
 #include "alienRx_fun.h"
 
 int sockfd, cliente_sockfd;
-unsigned char buffer[TAM_BUFFER];
+unsigned char buffer[MTU];
 
-void start_server()
+void read_client(void);
+
+void start_server(void)
 {
    	//Estructura de la familia AF_INET, que almacena direccion
    	struct sockaddr_in direccion_servidor; 
-   	//char leer_mensaje[TAM_BUFFER];
    	
    	/**
    	 * Colocando señal SIGUSR1 para escuchar por el procso padre
@@ -86,121 +110,8 @@ void start_server()
 		pid_t pid = fork();
 		if( !pid ) /* proceso hijo*/
 		{
-			/*
-			*	Inicia la transferencia de datos entre cliente y servidor
-			*/
-			printf("Se aceptó un cliente, atendiendolo \n");
-			
-			FILE *file;
-			int bytes_readed, bytes_writed, bytes;
-			char *file_name, *ruta_destino, *path_file;
-			/**
-			 * Recibir archivo
-			 * 
-			 * 1. Recibir nombre del archivo
-			 * 2. Recibir ruta donde guardar el archivo
-			 * 3. Recibir contenido del archivo
-			 * */
-			
-			
-			/**
-			 * 1. Recibir nombre del archivo
-			 * */			
-			bytes_readed = get_data();	
-			/**
-			 * Reservar memoria para la cadena del nombre de archivo
-			 * */
-			file_name = get_mem(bytes_readed);
-			printf("Nombre de archivo recibido: %s\n",file_name);
-			/**
-			 * Enviar de vuelta el nombre para confirmar
-			 * */
-			bytes_writed = write (cliente_sockfd, file_name, strlen(file_name)); 
-			if ( bytes_writed != strlen(file_name))
-			{
-				perror("No se escribio correctamente el nombre de archivo\n");
-				exit(1);
-			}
-			
-			/**
-			 * 2. Recibir la ruta de destino
-			 * */			
-			bytes_readed = get_data();	
-			/**
-			 * Reservar memoria para la cadena de la ruta de destino
-			 * */
-			ruta_destino = get_mem(bytes_readed);
-			printf("Ruta de destino recibida: %s\n",ruta_destino);
-			/**
-			 * Enviar de vuelta la ruta destino para confirmar
-			 * */
-			bytes_writed = write (cliente_sockfd, ruta_destino, strlen(ruta_destino)); 
-			if ( bytes_writed != strlen(ruta_destino))
-			{
-				perror("No se escribio correctamente la ruta destino\n");
-				exit(1);
-			}
-			
-			/**
-			 * 3. Recibiendo los bytes del archivo
-			 * */ 
-			path_file = get_path_file(ruta_destino,file_name);
-			printf("Creando archivo %s\n",path_file);
-			/**
-			* Crear archivo binario para escritura
-			* */
-			file = fopen(path_file,"wb");
-			/**
-			* Verificar que no hay error en la apertura
-			* */
-			if(!file)
-			{
-				perror ("Ocurrio un problema al abrir el archivo\n");
-				exit(1);
-			}
-			/**
-			 * Recibir bytes ...
-			 * */
-			printf("Recibiendo archivo ...\n");
-			
-			bytes=0;
-			bytes_readed = 0;
-			bytes_writed = 0 ;
-			
-			bytes_readed = read (cliente_sockfd, &buffer, 512); 
-			while( bytes_readed )
-			{	
-				if( bytes_readed < 0 )
-				{
-					perror ("Ocurrio algun problema al recibir datos del cliente");
-					exit(1);
-				}
-				bytes_writed = fwrite(&buffer, sizeof(unsigned char), bytes_readed, file);
-				if( bytes_writed < 0 )
-				{
-					perror("Error al leer el stream de datos\n");
-				}
-				bytes+=bytes_readed;
-				printf("Recibidos %d bytes del archivo ...\n",bytes);
-				bytes_readed = read (cliente_sockfd, &buffer, 512);
-			}
-			
-			/**
-			 * Cerrar descriptor de archivo y socket cliente
-			 * */
-			fclose(file);
-			close (cliente_sockfd);
-			
-			/**
-			 * Para finalizar correctamente el proceso hijo, debe 
-			 * enviarse una señal al proceso padre que avise que el 
-			 * proceso hijo ha finalizado.
-			 * 
-			 * La señal funciona como una interrupcion en el proceso 
-			 * padre para que no hacer el proceso bloqueante 
-			 * */
-			kill( getppid(), SIGUSR1 );
-			exit(0);
+			printf("Se acepto un cliente, atendiendolo... \n");
+			read_client();
 		}
 		printf("Concluimos la ejecución de la aplicacion Servidor \n");
 	}
@@ -210,4 +121,100 @@ void start_server()
 	close (sockfd);
 }
 
-
+void read_client(void)
+{
+	/*
+	* Inicia la transferencia de datos entre cliente y servidor
+	*/
+	FILE *file;
+	int bytes_readed, bytes_writed, bytes;
+	char *file_name, *ruta_destino, *path_file;
+	/**
+	 * Recibir archivo
+	 * 
+	 * 1. Recibir ruta donde guardar el archivo con nombre
+	 * 2. Recibir contenido del archivo
+	 * */
+	
+	/**
+	 * 1. Recibir nombre del archivo
+	 * */
+	printf("Esperando ruta y nombre destino... ");			
+	bytes_readed = get_data();
+	printf("leidos %d bytes del stream\n",bytes_readed);
+	/**
+	 * Reservar memoria para la cadena del nombre de archivo
+	 * y colocar el contenido del buffer en la memoria
+	 * */
+	path_file = get_mem(bytes_readed);
+	printf("Destino recibido: %s\n",path_file);
+	/**
+	 * Enviar de vuelta el nombre para confirmar
+	 * */
+	bytes_writed = write (cliente_sockfd, path_file, strlen(path_file)); 
+	if ( bytes_writed != strlen(path_file))
+	{
+		perror("No se escribio correctamente el nombre de archivo\n");
+		exit(1);
+	}
+	
+	/**
+	 * 3. Recibiendo los bytes del archivo
+	 * */ 
+	//path_file = get_path_file(ruta_destino,file_name);
+	printf("Creando archivo %s\n",path_file);
+	/**
+	* Crear archivo binario para escritura
+	* */
+	file = fopen(path_file,"wb");
+	/**
+	* Verificar que no hay error en la apertura
+	* */
+	if(!file)
+	{
+		perror ("Ocurrio un problema al abrir el archivo\n");
+		exit(1);
+	}
+	/**
+	 * Recibir bytes ...
+	 * */
+	printf("Recibiendo archivo ...\n");
+	
+	bytes=0;
+	bytes_readed = 0;
+	bytes_writed = 0 ;
+	
+	bytes_readed = read (cliente_sockfd, &buffer, MTU); 
+	while( bytes_readed )
+	{	
+		if( bytes_readed < 0 )
+		{
+			perror ("Ocurrio algun problema al recibir datos del cliente");
+			exit(1);
+		}
+		bytes_writed = fwrite(&buffer, sizeof(unsigned char), bytes_readed, file);
+		if( bytes_writed < 0 )
+		{
+			perror("Error al leer el stream de datos\n");
+		}
+		bytes+=bytes_readed;
+		printf("Recibidos %d bytes del archivo\n",bytes);
+		bytes_readed = read (cliente_sockfd, &buffer, MTU);
+		gotoxy(1,12);
+	}
+	gotoxy(1,13);
+	//	Cerrar descriptor de archivo
+	fclose(file);
+	
+	/**
+	 * Para finalizar correctamente el proceso hijo, debe 
+	 * enviarse una señal al proceso padre que avise que el 
+	 * proceso hijo ha finalizado.
+	 * 
+	 * La señal funciona como una interrupcion en el proceso 
+	 * padre para que no hacer el proceso bloqueante 
+	 * */
+	close (cliente_sockfd); // Cerrar socket cliente
+	kill( getppid(), SIGUSR1 );
+	exit(EXIT_SUCCESS);
+}

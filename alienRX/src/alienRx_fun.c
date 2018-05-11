@@ -1,28 +1,36 @@
+/*
+ * alienRx_fun.c
+ * 
+ * Copyright 2018 Leo <leo@Inspiron3437>
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ * 
+ * 
+ */
+
 #include "alienRx_fun.h"
 
-extern unsigned char buffer[TAM_BUFFER];
+extern unsigned char buffer[MTU];
 extern int sockfd;
 extern int cliente_sockfd;
 
-void isr_signal(int signal)
-{
-	int re;
-	pid_t pid;
-	if ( signal == SIGUSR1 )
-	{
-		printf("Señal SIGUSR1 recibida\n");
-		/**
-		 * Esperando al proceso hijo para finalizar
-		 * */
-		pid = wait(&re);
-		printf("Proceso hijo terminado, con resultado %d y PID %d\n",re>>8,pid); 
-	}
-}
-
-int get_data()
+int get_data(void)
 {
 	int bytes_readed;
-	bytes_readed = read (cliente_sockfd, &buffer, TAM_BUFFER);
+	bytes_readed = read (cliente_sockfd, &buffer, MTU);
 	if ( bytes_readed < 0 )
 	{
 		perror("Error al recibir el mensaje\n");
@@ -61,3 +69,25 @@ char *get_path_file(char *ruta_destino, char *file_name)
 	}
 	return path;
 }
+
+void gotoxy(int x, int y)
+{
+	printf("%c[%d;%df",0x1B,y,x);
+}
+
+void isr_signal(int signal)
+{
+	int status;
+	pid_t pid;
+	if ( signal == SIGUSR1 )
+	{
+		printf("Señal SIGUSR1 recibida\n");
+		/**
+		 * Esperando al proceso hijo para finalizar
+		 * */
+		pid = wait(&status);
+		status>>=8;
+		printf("Proceso %d terminado con resultado %d\n",pid,status); 
+	}
+}
+
